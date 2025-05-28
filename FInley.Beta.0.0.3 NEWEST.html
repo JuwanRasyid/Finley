@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finley - AI Financial Advisor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add Chart.js for market data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --day-bg: #f0f5ff;
+            --day-container: #ffffff;
+            --day-text: #2c3e50;
+            --day-secondary: #5a6a7f;
+            --day-accent: #3a7bd5;
+            --day-button: #3a7bd5;
+            --day-button-hover: #2a6bc5;
+            
+            --night-bg: #1a1a1a;
+            --night-container: #2d2d2d;
+            --night-text: #e0e0e0;
+            --night-secondary: #95a5a6;
+            --night-accent: #3498db;
+            --night-button: #2980b9;
+            --night-button-hover: #1a6ea8;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--day-bg);
+            color: var(--day-text);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.night-mode {
+            background-color: var(--night-bg);
+            color: var(--night-text);
+        }
+        h1 {
+            color: var(--day-accent);
+            text-align: center;
+            margin-bottom: 5px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .night-mode h1 {
+            color: var(--night-accent);
+        }
+        .subtitle {
+            text-align: center;
+            color: var(--day-secondary);
+            margin-bottom: 20px;
+            font-weight: 400;
+            font-size: 0.95em;
+        }
+        .night-mode .subtitle {
+            color: var(--night-secondary);
+        }
+        #chat-container {
+            background-color: var(--day-container);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            height: 250px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+        .night-mode #chat-container {
+            background-color: var(--night-container);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 75%;
+            word-wrap: break-word;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.3s forwards;
+            line-height: 1.5;
+            font-size: 0.95em;
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            border-top-right-radius: 4px;
+        }
+        .night-mode .user-message {
+            background-color: #1e3a5f;
+            color: var(--night-text);
+        }
+        .bot-message {
+            background-color: #f1f8fe;
+            margin-right: auto;
+            border-top-left-radius: 4px;
+            border-left: 3px solid var(--day-accent);
+        }
+        .night-mode .bot-message {
+            background-color: #2a3a4a;
+            color: var(--night-text);
+            border-left: 3px solid var(--night-accent);
+        }
+        #input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #d1d9e6;
+            border-radius: 8px;
+            font-size: 14px;
+            min-height: 48px;
+            max-height: 150px;
+            resize: none;
+            overflow-y: hidden;
+            transition: height 0.2s, background-color 0.3s, border-color 0.3s;
+            line-height: 1.5;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--day-container);
+            color: var(--day-text);
+        }
+        .night-mode #user-input {
+            background-color: #333;
+            color: var(--night-text);
+            border-color: #444;
+        }
+        button {
+            background-color: var(--day-button);
+            color: white;
+            border: none;
+            padding: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            height: 48px;
+            width: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .night-mode button {
+            background-color: var(--night-button);
+        }
+        button:hover {
+            background-color: var(--day-button-hover);
+            transform: translateY(-1px);
+        }
+        .night-mode button:hover {
+            background-color: var(--night-button-hover);
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .connection-status {
+            text-align: center;
+            font-size: 0.85em;
+            color: var(--day-secondary);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .night-mode .connection-status {
+            color: var(--night-secondary);
+        }
+        .optimistic-ui {
+            background-color: #f8f9fa;
+            color: var(--day-secondary);
+        }
+        .night-mode .optimistic-ui {
+            background-color: #3a3a3a;
+            color: #a0a0a0;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+        }
+        #refresh-button {
+            background-color: #2ecc71;
+        }
+        #refresh-button:hover {
+            background-color: #27ae60;
+        }
+        .night-mode #refresh-button {
+            background-color: #27ae60;
+        }
+        #upload-button {
+            background-color: #9b59b6;
+        }
+        #upload-button:hover {
+            background-color: #8e44ad;
+        }
+        .night-mode #upload-button {
+            background-color: #8e44ad;
+        }
+        #night-mode-button {
+            background-color: var(--day-accent);
+        }
+        #night-mode-button:hover {
+            background-color: var(--day-button-hover);
+        }
+        .night-mode #night-mode-button {
+            background-color: var(--night-accent);
+        }
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .welcome-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-right: 15px;
+            border: 3px solid var(--day-accent);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .night-mode .welcome-image {
+            border-color: var(--night-accent);
+        }
+        .file-input {
+            display: none;
+        }
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+        .instructions {
+            font-size: 0.85em;
+            color: var(--day-secondary);
+            margin-top: 5px;
+            text-align: center;
+        }
+        .night-mode .instructions {
+            color: var(--night-secondary);
+        }
+        .speech-bubble {
+            position: relative;
+            background: #f1f8fe;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 0;
+            max-width: calc(100% - 120px);
+            border-left: 3px solid var(--day-accent);
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .night-mode .speech-bubble {
+            background: #2a3a4a;
+            border-left: 3px solid var(--night-accent);
+        }
+        .shark-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .welcome-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .button-icon {
+            font-size: 1.2em;
+        }
+        /* Market tracker styles */
+        .market-tracker {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .market-card {
+            flex: 1;
+            background-color: var(--day-container);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        .night-mode .market-card {
+            background-color: var(--night-container);
+        }
+        .market-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.9em;
+            color: var(--day-secondary);
+        }
+        .night-mode .market-card h3 {
+            color: var(--night-secondary);
+        }
+        .market-price {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--day-accent);
+        }
+        .night-mode .market-price {
+            color: var(--night-accent);
+        }
+        .market-change.positive {
+            color: #2ecc71;
+        }
+        .market-change.negative {
+            color: #e74c3c;
+        }
+        .chart-container {
+            height: 200px;
+            margin-top: 15px;
+        }
+        /* Markdown rendering styles */
+        .message strong {
+            font-weight: 600;
+        }
+        .message em {
+            font-style: italic;
+        }
+        .message code {
+            background-color: rgba(0,0,0,0.05);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .night-mode .message code {
+            background-color: rgba(255,255,255,0.1);
+        }
+        .message ul, .message ol {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+        .message li {
+            margin-bottom: 4px;
+        }
+        /* Toggle for market data */
+        .market-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        .market-toggle button {
+            width: auto;
+            padding: 0 15px;
+            margin: 0 5px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Finley</h1>
+    <div class="subtitle">Your Sharky AI Financial Advisor</div>
+    
+    <div class="shark-container">
+        <div class="welcome-content">
+            <img src="https://static.wikia.nocookie.net/vsbattles/images/f/f9/JeffLandShark.png/revision/latest?cb=20241226155042" alt="Finley the Shark" class="welcome-image">
+            <div class="speech-bubble">
+                <strong>Hello, I'm Finley!</strong> Your friendly shark AI financial advisor. How can I help you with your financial questions today?<br><br>
+                You can ask about investments, budgeting, market trends, or any money-related topics!
+            </div>
+        </div>
+    </div>
+    
+    <!-- Market Data Toggle -->
+    <div class="market-toggle">
+        <button id="show-markets" class="active">Show Markets</button>
+        <button id="hide-markets">Hide Markets</button>
+    </div>
+    
+    <!-- Market Tracker Section -->
+    <div id="market-tracker" class="market-tracker">
+        <div class="market-card" id="sp500-card">
+            <h3>S&P 500</h3>
+            <div class="market-price" id="sp500-price">Loading...</div>
+            <div class="market-change" id="sp500-change"></div>
+        </div>
+        <div class="market-card" id="nasdaq-card">
+            <h3>NASDAQ</h3>
+            <div class="market-price" id="nasdaq-price">Loading...</div>
+            <div class="market-change" id="nasdaq-change"></div>
+        </div>
+        <div class="market-card" id="btc-card">
+            <h3>Bitcoin</h3>
+            <div class="market-price" id="btc-price">Loading...</div>
+            <div class="market-change" id="btc-change"></div>
+        </div>
+        <div class="market-card" id="eth-card">
+            <h3>Ethereum</h3>
+            <div class="market-price" id="eth-price">Loading...</div>
+            <div class="market-change" id="eth-change"></div>
+        </div>
+    </div>
+    
+    <!-- Chart Container -->
+    <div id="chart-container" class="chart-container" style="display: none;">
+        <canvas id="market-chart"></canvas>
+    </div>
+    
+    <div id="connection-status" class="connection-status">Connection: Testing...</div>
+    <div id="chat-container"></div>
+    
+    <div class="action-buttons">
+        <button id="night-mode-button" title="Toggle Night Mode"><i class="fas fa-moon button-icon"></i></button>
+        <button id="upload-button" title="Upload Image"><i class="fas fa-image button-icon"></i></button>
+        <input type="file" id="file-input" class="file-input" accept="image/*">
+        <button id="refresh-button" title="Refresh Connection"><i class="fas fa-sync-alt button-icon"></i></button>
+    </div>
+    
+    <div id="input-area">
+        <textarea id="user-input" placeholder="Ask your financial question..." autocomplete="off" rows="1"></textarea>
+        <button id="send-button" title="Send Message"><i class="fas fa-paper-plane button-icon"></i></button>
+    </div>
+    
+    <img id="image-preview" class="image-preview" alt="Image preview">
+
+    <script>
+        // API Configuration
+        const API_KEY = "cpk_93316decb53549f888b89cdf7749b374.4083ec5e0d665f17b3a0aa7232f5ff2c.QzLr6Ciw86ftgsb9EpWFL4KsXcCvJKvn";
+        const API_URL = "https://llm.chutes.ai/v1/chat/completions";
+        const MODEL = "deepseek-ai/DeepSeek-V3-Base";
+        const TIMEOUT_DURATION = 10000;
+        const RETRY_DELAY = 2000;
+        const MAX_RETRIES = 3;
+        const MARKET_UPDATE_INTERVAL = 300000; // 5 minutes
+
+        // DOM Elements
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const refreshButton = document.getElementById('refresh-button');
+        const uploadButton = document.getElementById('upload-button');
+        const nightModeButton = document.getElementById('night-mode-button');
+        const fileInput = document.getElementById('file-input');
+        const imagePreview = document.getElementById('image-preview');
+        const connectionStatus = document.getElementById('connection-status');
+        const marketTracker = document.getElementById('market-tracker');
+        const chartContainer = document.getElementById('chart-container');
+        const showMarketsBtn = document.getElementById('show-markets');
+        const hideMarketsBtn = document.getElementById('hide-markets');
+        
+        // State variables
+        let connectionQuality = 'testing';
+        let pendingRequest = null;
+        let isNightMode = false;
+        let retryCount = 0;
+        let connectionCheckInterval;
+        let marketUpdateInterval;
+        let marketChart = null;
+        let conversationHistory = [
+            {
+                role: "system",
+                content: `You are Finley, a friendly shark AI financial advisor. Your primary focus is providing financial advice, 
+                but you can handle general questions too. When asked non-financial questions, politely remind the user 
+                that your specialty is finance but still answer helpfully. For example:
+                - "Great question! While I specialize in finance, I can tell you that..."
+                - "I'd be happy to help! As a financial advisor, I'm particularly good with..."
+                - "Interesting! While my main expertise is in financial matters..."
+                
+                Then gently guide the conversation back to finance with suggestions like:
+                - "Would you like to discuss how this relates to your finances?"
+                - "I'd be happy to analyze this from a financial perspective..."
+                - "This reminds me of a financial concept that might interest you..."
+                
+                You can analyze financial documents, charts, and images when provided. Be professional yet approachable. 
+                Keep responses concise but thorough when needed. Use occasional shark puns to keep things fun, like 
+                "Let's dive into your finances!" or "I smell profit in the water!"
+                
+                Format your responses with Markdown for better readability:
+                - Use **bold** for important terms
+                - Use *italics* for emphasis
+                - Use bullet points for lists
+                - Use code blocks for financial calculations`
+            },
+            {
+                role: "assistant",
+                content: "**Hello, I'm Finley!** Your friendly shark AI financial advisor. How can I help you with your financial questions today?\n\nYou can ask about:\n- **Investments** and portfolio strategies\n- **Budgeting** and savings plans\n- **Market trends** and analysis\n- Any other money-related topics!\n\n*Current market data is displayed above for your reference.*"
+            }
+        ];
+
+        // Initialize connection test and start periodic checks
+        testConnection();
+        startConnectionMonitoring();
+        fetchMarketData();
+        startMarketUpdates();
+
+        // Markdown to HTML conversion
+        function renderMarkdown(text) {
+            // Simple markdown rendering
+            let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>') // italics
+                .replace(/`(.*?)`/g, '<code>$1</code>') // inline code
+                .replace(/^-\s(.*$)/gm, '<li>$1</li>') // unordered lists
+                .replace(/^\d\.\s(.*$)/gm, '<li>$1</li>'); // ordered lists
+            
+            // Wrap lists in <ul> tags if we find list items
+            if (html.includes('<li>')) {
+                html = html.replace(/(<li>.*<\/li>)+/g, '<ul>$&</ul>');
+            }
+            
+            return html.replace(/\n/g, '<br>');
+        }
+
+        // Auto-resize textarea function
+        function autoResizeTextarea() {
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+            
+            if (userInput.scrollHeight > 150) {
+                userInput.style.overflowY = 'auto';
+            } else {
+                userInput.style.overflowY = 'hidden';
+            }
+        }
+
+        // Add message to UI with markdown support
+        function addMessage(content, isUser, isOptimistic = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+            if (isOptimistic) messageDiv.classList.add('optimistic-ui');
+            
+            messageDiv.innerHTML = renderMarkdown(content);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        function updateConnectionStatus(quality, message = '') {
+            connectionQuality = quality;
+            const statusMap = {
+                'good': { text: 'Connection: Good', color: '#2ecc71' },
+                'slow': { text: 'Connection: Slow', color: '#f39c12' },
+                'poor': { text: 'Connection: Issue - ' + message, color: '#e74c3c' },
+                'testing': { text: 'Connection: Testing...', color: '#3498db' }
+            };
+            
+            const status = statusMap[quality] || statusMap['poor'];
+            connectionStatus.textContent = status.text;
+            connectionStatus.style.color = status.color;
+        }
+
+        function startConnectionMonitoring() {
+            connectionCheckInterval = setInterval(() => {
+                if (connectionQuality !== 'good') {
+                    testConnection();
+                }
+            }, 30000);
+        }
+
+        function startMarketUpdates() {
+            marketUpdateInterval = setInterval(fetchMarketData, MARKET_UPDATE_INTERVAL);
+        }
+
+        async function fetchMarketData() {
+            try {
+                // In a real app, you would use a financial API like Alpha Vantage, Yahoo Finance, etc.
+                // For this demo, we'll simulate market data with random fluctuations
+                
+                // Simulated data - in a real app you would fetch from an API
+                const simulateChange = (basePrice) => {
+                    const changePercent = (Math.random() * 3 - 1.5); // -1.5% to +1.5%
+                    const changeValue = basePrice * changePercent / 100;
+                    return {
+                        price: basePrice + changeValue,
+                        change: changeValue,
+                        percent: changePercent
+                    };
+                };
+                
+                // S&P 500
+                const sp500 = simulateChange(5921);
+                document.getElementById('sp500-price').textContent = `$${sp500.price.toFixed(2)}`;
+                updateChangeElement('sp500-change', sp500.change, sp500.percent);
+                
+                // NASDAQ
+                const nasdaq = simulateChange(19240);
+                document.getElementById('nasdaq-price').textContent = `$${nasdaq.price.toFixed(2)}`;
+                updateChangeElement('nasdaq-change', nasdaq.change, nasdaq.percent);
+                
+                // Bitcoin
+                const btc = simulateChange(108994);
+                document.getElementById('btc-price').textContent = `$${btc.price.toFixed(2)}`;
+                updateChangeElement('btc-change', btc.change, btc.percent);
+                
+                // Ethereum
+                const eth = simulateChange(2662);
+                document.getElementById('eth-price').textContent = `$${eth.price.toFixed(2)}`;
+                updateChangeElement('eth-change', eth.change, eth.percent);
+                
+                // Update chart
+                updateMarketChart();
+                
+            } catch (error) {
+                console.error("Failed to fetch market data:", error);
+            }
+        }
+        
+        function updateChangeElement(elementId, change, percent) {
+            const element = document.getElementById(elementId);
+            element.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%)`;
+            element.className = `market-change ${percent >= 0 ? 'positive' : 'negative'}`;
+        }
+        
+        function updateMarketChart() {
+            const ctx = document.getElementById('market-chart').getContext('2d');
+            
+            // Destroy previous chart if it exists
+            if (marketChart) {
+                marketChart.destroy();
+            }
+            
+            // Sample data for the chart
+            const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            const sp500Data = [6045, 6040, 5954, 5611, 5569, 5921];
+            const nasdaqData = [19400, 19627, 19250, 17600, 17830, 19240];
+            
+            marketChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'S&P 500',
+                            data: sp500Data,
+                            borderColor: '#3a7bd5',
+                            backgroundColor: 'rgba(58, 123, 213, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'NASDAQ',
+                            data: nasdaqData,
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                        }
+                    }
+                }
+            });
+        }
+
+        async function testConnection() {
+            updateConnectionStatus('testing');
+            
+            try {
+                const testMessage = "Just testing connection, respond with 'Connected successfully to Finley'";
+                const testResponse = await callAPI([
+                    {
+                        role: "user",
+                        content: testMessage
+                    }
+                ], true);
+                
+                if (testResponse.includes("Connected successfully")) {
+                    updateConnectionStatus('good');
+                    retryCount = 0;
+                    return true;
+                } else {
+                    updateConnectionStatus('poor', 'Unexpected test response');
+                    return false;
+                }
+            } catch (error) {
+                console.error("Connection test failed:", error);
+                updateConnectionStatus('poor', 'Test failed - ' + (error.message || 'Unknown error'));
+                return false;
+            }
+        }
+
+        async function callAPI(messages, isTest = false) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                controller.abort();
+                if (!isTest) updateConnectionStatus('slow');
+            }, TIMEOUT_DURATION);
+            
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: MODEL,
+                        messages: conversationHistory.concat(messages),
+                        temperature: 0.7,
+                        max_tokens: 500
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                
+                const responseTime = Date.now() - startTime;
+                if (!isTest) {
+                    if (responseTime > 5000) {
+                        updateConnectionStatus('poor');
+                    } else if (responseTime > 2000) {
+                        updateConnectionStatus('slow');
+                    } else {
+                        updateConnectionStatus('good');
+                    }
+                }
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message || pendingRequest) return;
+
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            
+            addMessage(message, true);
+            conversationHistory.push({
+                role: "user",
+                content: message
+            });
+            userInput.value = '';
+            userInput.style.height = '48px';
+            
+            const optimisticResponse = addMessage("Finley is considering your question...", false, true);
+            
+            try {
+                let aiResponse;
+                let attempts = 0;
+                let success = false;
+                
+                while (attempts < MAX_RETRIES && !success) {
+                    attempts++;
+                    try {
+                        aiResponse = await callAPI([]);
+                        success = true;
+                    } catch (error) {
+                        if (attempts < MAX_RETRIES) {
+                            optimisticResponse.textContent = `Having some connection issues (attempt ${attempts} of ${MAX_RETRIES}), trying again...`;
+                            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+                
+                optimisticResponse.innerHTML = renderMarkdown(aiResponse);
+                optimisticResponse.classList.remove('optimistic-ui');
+                
+                conversationHistory.push({
+                    role: "assistant",
+                    content: aiResponse
+                });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                
+                if (error.name === 'AbortError') {
+                    optimisticResponse.textContent = "Taking longer than usual... Please try again later.";
+                } else {
+                    optimisticResponse.textContent = "Sorry, I'm having technical difficulties. Please refresh or try again later.";
+                }
+                optimisticResponse.classList.remove('optimistic-ui');
+                
+                updateConnectionStatus('poor', error.message || 'Request failed');
+            } finally {
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                
+                const message = `[Image uploaded: ${file.name}]`;
+                addMessage(message, true);
+                conversationHistory.push({
+                    role: "user",
+                    content: "I've uploaded an image: " + file.name + ". Please analyze it."
+                });
+                
+                const optimisticResponse = addMessage("Finley is examining your image...", false, true);
+                
+                setTimeout(() => {
+                    optimisticResponse.innerHTML = renderMarkdown(`
+                        I see you've shared an image (**${file.name}**). While I can't view images directly, 
+                        I can help analyze financial data if you describe it to me. For example:
+                        
+                        - Is this a *chart*? What trends do you see?
+                        - Is this a *financial document*? What numbers stand out?
+                        - Is this a *receipt or invoice*? What are the key amounts?
+                        
+                        Describe what you see and I'll provide financial insights!
+                    `);
+                    optimisticResponse.classList.remove('optimistic-ui');
+                    
+                    conversationHistory.push({
+                        role: "assistant",
+                        content: `I see you've shared an image (${file.name}). While I can't view images directly, I can help analyze financial data if you describe it to me.`
+                    });
+                }, 1500);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function toggleNightMode() {
+            isNightMode = !isNightMode;
+            document.body.classList.toggle('night-mode', isNightMode);
+            nightModeButton.innerHTML = isNightMode 
+                ? '<i class="fas fa-sun button-icon"></i>' 
+                : '<i class="fas fa-moon button-icon"></i>';
+            localStorage.setItem('finleyNightMode', isNightMode);
+            
+            // Re-render chart in night mode colors if it exists
+            if (marketChart) {
+                updateMarketChart();
+            }
+        }
+
+        function checkSavedNightMode() {
+            const savedMode = localStorage.getItem('finleyNightMode');
+            if (savedMode === 'true') {
+                isNightMode = true;
+                document.body.classList.add('night-mode');
+                nightModeButton.innerHTML = '<i class="fas fa-sun button-icon"></i>';
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        refreshButton.addEventListener('click', testConnection);
+        uploadButton.addEventListener('click', () => fileInput.click());
+        nightModeButton.addEventListener('click', toggleNightMode);
+        fileInput.addEventListener('change', handleImageUpload);
+        userInput.addEventListener('input', autoResizeTextarea);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Market data toggle
+        showMarketsBtn.addEventListener('click', () => {
+            marketTracker.style.display = 'flex';
+            chartContainer.style.display = 'none';
+            showMarketsBtn.classList.add('active');
+            hideMarketsBtn.classList.remove('active');
+        });
+        
+        hideMarketsBtn.addEventListener('click', () => {
+            marketTracker.style.display = 'none';
+            chartContainer.style.display = 'none';
+            hideMarketsBtn.classList.add('active');
+            showMarketsBtn.classList.remove('active');
+        });
+
+        // Initial setup
+        window.addEventListener('DOMContentLoaded', () => {
+            userInput.focus();
+            checkSavedNightMode();
+            autoResizeTextarea();
+            
+            // Initialize market data display
+            marketTracker.style.display = 'flex';
+            showMarketsBtn.classList.add('active');
+        });
+    </script>
+</body>
+</html>
